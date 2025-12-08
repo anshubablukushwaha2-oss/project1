@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GreenBudget — Expense & Budget Tracker</title>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- PWA manifest -->
+<link rel="manifest" href="manifest.json" id="manifest-link">
+
+<style>
+/* ===== Reset & Base ===== */
+:root{
+  --bg:#e9f0fb; --card:#fff; --primary:#0e3574; --accent:#5fa0ff; --muted:#6b7280;
+  --glass: rgba(255,255,255,0.6);
+  --success:#16a34a; --danger:#dc2626;
+  --dark-bg:#071022; --dark-card:#0f1724; --dark-text:#e6eef8;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;}
+html,body{height:100%;}
+body{background:linear-gradient(180deg,var(--bg),#d2e6ff);color:#0b1220;line-height:1.45;font-size:15px;-webkit-font-smoothing:antialiased;}
+.container{max-width:1050px;margin:22px auto;padding:18px;}
+.header{display:flex;align-items:center;gap:16px;justify-content:space-between;position:sticky;top:12px;z-index:999;}
+.brand{display:flex;align-items:center;gap:12px;}
+.logo{
+  width:54px;height:54px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0f397c,#5fa0ff);box-shadow:0 6px 18px rgba(16,46,100,0.18);
+  color:white;font-weight:700;font-size:18px;
+}
+.title{font-size:1.25rem;font-weight:700;color:var(--primary);}
+
+/* Top controls */
+.top-controls{display:flex;gap:10px;align-items:center;}
+.btn{background:var(--primary);color:white;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:600;box-shadow:0 6px 16px rgba(14,53,116,0.12);}
+.btn.ghost{background:transparent;color:var(--primary);border:1px solid rgba(14,53,116,0.12);box-shadow:none;}
+.small{padding:8px 10px;font-size:14px;border-radius:8px;}
+.toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,0.6);}
+
+/* layout */
+.grid{
+  display:grid;grid-template-columns:1fr 380px;gap:16px;margin-top:16px;
+}
+@media(max-width:980px){.grid{grid-template-columns:1fr;}.header{flex-direction:column;align-items:flex-start;gap:12px;}}
+
+/* Left column cards */
+.card{background:var(--card);padding:16px;border-radius:14px;box-shadow:0 8px 26px rgba(13,30,60,0.06);transition:transform .18s;}
+.card:hover{transform:translateY(-6px);}
+
+/* dashboard stats row */
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+.stat{flex:1;min-width:160px;padding:12px;border-radius:12px;background:linear-gradient(180deg,rgba(240,248,255,0.9),#fff);box-shadow:0 6px 20px rgba(10,30,80,0.04);}
+
+/* progress */
+.progress-bar{height:16px;background:#eef2ff;border-radius:12px;overflow:hidden;margin-top:8px;}
+.progress{height:100%;background:linear-gradient(90deg,#06b6d4,#3b82f6);width:0%;transition:width .6s ease;}
+
+/* form */
+.form-row{display:flex;gap:10px;margin-top:10px;}
+.form-row input,.form-row select{flex:1;padding:10px;border-radius:10px;border:1px solid #e6eef8;background:transparent;}
+.form-row .secondary{flex-basis:130px;}
+.form-row button{min-width:130px;}
+
+/* lists */
+.list{margin-top:12px;max-height:300px;overflow:auto;padding-right:6px;}
+.item{display:flex;justify-content:space-between;gap:8px;padding:10px;border-radius:10px;align-items:center;background:linear-gradient(180deg,#fbfdff,#f6fbff);margin-bottom:8px;box-shadow:0 2px 8px rgba(12,34,60,0.03);}
+.item small{color:var(--muted);}
+
+/* right column */
+.right-column{display:flex;flex-direction:column;gap:12px;}
+.chart-card{padding:10px;border-radius:12px;background:linear-gradient(180deg,#fff,#f7fbff);}
+
+/* search */
+.search{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;border:1px solid #e6eef8;background:transparent;}
+
+/* badges */
+.badge{display:inline-block;background:linear-gradient(90deg,#dbeafe,#bfdbfe);padding:6px 10px;border-radius:999px;font-weight:700;margin:6px 6px 0 0;color:#0f3b6b;}
+
+/* small text */
+.muted{color:var(--muted);font-size:13px;}
+
+/* footer */
+.footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* dark mode */
+body.dark{background:linear-gradient(180deg,var(--dark-bg),#071126);color:var(--dark-text);}
+body.dark .card{background:var(--dark-card);box-shadow:0 8px 24px rgba(0,0,0,0.45);color:var(--dark-text);}
+body.dark .stat{background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.02));}
+body.dark .logo{box-shadow:none;}
+body.dark .search{border-color:rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);}
+
+/* small screens */
+@media(max-width:640px){
+  .form-row{flex-direction:column;}
+  .top-controls{flex-direction:column;align-items:flex-end;}
+  .logo{width:46px;height:46px;font-size:16px;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <div class="logo" title="GreenBudget">GB</div>
+      <div>
+        <div class="title">GreenBudget</div>
+        <div class="muted">Smart Expense & Budget Tracker</div>
+      </div>
+    </div>
+
+    <div class="top-controls">
+      <div class="search card" id="searchBox">
+        <input id="global-search" placeholder="Search name / category / emotion" style="border:none;background:transparent;outline:none;width:260px;">
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn ghost small" id="exportPdf">Export PDF</button>
+        <button class="btn ghost small" id="exportCsv">Export CSV</button>
+        <div class="toggle" id="darkToggle" title="Toggle dark mode">🌙</div>
+        <button class="btn small" id="signinBtn">Login / Signup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid">
+    <!-- LEFT -->
+    <div>
+      <!-- DASHBOARD -->
+      <div class="card" id="dashboardCard">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><strong>Total Budget</strong><div class="muted">Your monthly budget</div></div>
+          <div style="text-align:right;"><div style="font-size:1.2rem;font-weight:800">₹ <span id="total-budget">0</span></div><div class="muted">Remaining ₹ <span id="remaining-budget">0</span></div></div>
+        </div>
+
+        <div class="stats" style="margin-top:12px;">
+          <div class="stat">
+            <div class="muted">Total Expense</div>
+            <div style="font-weight:800;font-size:1.1rem">₹ <span id="total-expense">0</span></div>
+            <div class="muted">Goal <small id="goal-amount-text">₹0</small></div>
+            <div class="progress-bar"><div id="goal-progress-bar" class="progress" style="width:0%"></div></div>
+          </div>
+
+          <div class="stat">
+            <div class="muted">Level & XP</div>
+            <div style="font-weight:800">Lv <span id="level">1</span> • XP <span id="xp">0</span></div>
+            <div class="progress-bar"><div id="xp-progress" class="progress" style="width:0%"></div></div>
+          </div>
+
+          <div class="stat">
+            <div class="muted">Streak</div>
+            <div style="font-weight:800" id="streak">0 days</div>
+            <div class="muted">Badges</div>
+            <div id="badges" style="margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <!-- add expense + income -->
+        <div style="margin-top:12px;">
+          <form id="addForm" class="form-row" onsubmit="return false;">
+            <input id="expType" list="types" value="Expense" style="min-width:120px;border-radius:10px;padding:10px;" />
+            <datalist id="types"><option>Expense</option><option>Income</option></datalist>
+            <input id="expName" placeholder="Name (eg. Lunch / Salary)" required />
+            <input id="amount" type="number" placeholder="₹ Amount" required />
+            <input id="date" type="date" class="secondary" required />
+            <select id="category" class="secondary" required>
+              <option value="">Category</option>
+              <option>Food</option><option>Transport</option><option>Shopping</option><option>Rent</option><option>Utilities</option><option>Salary</option><option>Others</option>
+            </select>
+            <select id="emotion" class="secondary" required>
+              <option value="">Emotion</option>
+              <option>😊 Happy</option><option>😢 Sad</option><option>😫 Stressed</option><option>🤩 Excited</option><option>😡 Angry</option>
+            </select>
+            <button class="btn small" id="addBtn">Add</button>
+          </form>
+
+          <!-- category limits -->
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input id="newBudget" placeholder="Set Month Budget (₹)" style="padding:8px;border-radius:10px;border:1px solid #eef2ff;" />
+            <input id="setGoal" placeholder="Set Goal (₹)" style="padding:8px;border-radius:10px;border:1px solid #eef2ff;" />
+            <button class="btn ghost small" id="saveBudgetBtn">Save</button>
+          </div>
+          <div style="margin-top:8px;" class="muted">Set category limits (type name and limit then click Add)</div>
+          <div class="form-row" style="margin-top:8px;">
+            <input id="limitCat" placeholder="Category name" />
+            <input id="limitAmt" type="number" placeholder="Limit (₹)" />
+            <button class="btn ghost small" id="addLimitBtn">Add Limit</button>
+          </div>
+          <div id="limitsList" class="list"></div>
+        </div>
+      </div>
+
+      <!-- expenses list -->
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><strong>Expenses & Income</strong><div class="muted">Tap an item to delete / view details</div></div>
+          <div>
+            <select id="filterCat" style="padding:8px;border-radius:8px;">
+              <option value="">All</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="items" class="list" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- reports bottom -->
+      <div class="card" style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:220px;">
+          <strong>Monthly Insights</strong>
+          <div id="insights" class="muted" style="margin-top:8px">Add transactions to get insights.</div>
+        </div>
+        <div style="min-width:160px;display:flex;flex-direction:column;gap:6px;">
+          <strong>Quick Actions</strong>
+          <button class="btn ghost small" id="clearStorageBtn">Reset App</button>
+          <button class="btn ghost small" id="installBtn">Install App (PWA)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <aside class="right-column">
+      <div class="card chart-card">
+        <strong>Category Breakdown</strong>
+        <canvas id="categoryChart" style="height:220px"></canvas>
+      </div>
+
+      <div class="card chart-card">
+        <strong>Monthly Trend</strong>
+        <canvas id="monthlyChart" style="height:220px"></canvas>
+      </div>
+
+      <div class="card chart-card">
+        <strong>Emotions</strong>
+        <canvas id="emotionChart" style="height:180px"></canvas>
+      </div>
+
+      <div class="card">
+        <strong>Badges</strong>
+        <div id="smallBadges" style="margin-top:8px;"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="footer card">Made with ❤️ • GreenBudget • Offline-ready PWA • Your data stays in browser (localStorage)</div>
+</div>
+
+<!-- LOGIN / SIGNUP Modal -->
+<div id="authModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,9,20,0.5);z-index:9999;">
+  <div style="width:360px;background:var(--card);padding:18px;border-radius:12px;">
+    <h3 id="authTitle">Login / Signup</h3>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <input id="authName" placeholder="Name" style="flex:1;padding:10px;border-radius:8px;border:1px solid #eef2ff;" />
+      <input id="authPin" placeholder="4-digit PIN" maxlength="4" style="width:120px;padding:10px;border-radius:8px;border:1px solid #eef2ff;" />
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;">
+      <button class="btn ghost" id="authCancel">Cancel</button>
+      <button class="btn" id="authSave">Save</button>
+    </div>
+    <div class="muted" style="margin-top:8px">Accounts are stored locally on this device only.</div>
+  </div>
+</div>
+
+<script>
+/* ======= App State & Defaults ======= */
+const APP_KEY = 'greenbudget_v1';
+let store = JSON.parse(localStorage.getItem(APP_KEY)) || {
+  users: {},           // users[name] = {pin, name, data...}
+  signedIn: null,      // current user name
+  settings: {
+    monthlyBudget: 50000,
+    goalAmount: 10000,
+    categoryLimits: {}
+  }
+};
+
+// For guest usage, create default guest user if none
+if(!store.signedIn){ store.signedIn = 'guest'; if(!store.users['guest']) store.users['guest'] = {pin:'',name:'Guest', data:{expenses:[], xp:0, level:1, streak:0, lastDate:null, badges:[]}}; saveStore(); }
+let currentUser = store.signedIn;
+let userData = store.users[currentUser].data;
+
+/* ======= Utilities ======= */
+function saveStore(){ localStorage.setItem(APP_KEY, JSON.stringify(store)); }
+function formatCurrency(v){ return Number(v||0).toLocaleString('en-IN'); }
+function todayISO(){ return new Date().toISOString().split('T')[0]; }
+
+/* ======= DOM refs ======= */
+const totalBudgetEl = document.getElementById('total-budget');
+const totalExpenseEl = document.getElementById('total-expense');
+const remainingEl = document.getElementById('remaining-budget');
+const goalAmountText = document.getElementById('goal-amount-text');
+const goalProgressBar = document.getElementById('goal-progress-bar');
+const xpEl = document.getElementById('xp');
+const levelEl = document.getElementById('level');
+const xpProgress = document.getElementById('xp-progress');
+const streakEl = document.getElementById('streak');
+const badgesEl = document.getElementById('badges');
+const smallBadgesEl = document.getElementById('smallBadges');
+const itemsList = document.getElementById('items');
+const limitsList = document.getElementById('limitsList');
+const filterCat = document.getElementById('filterCat');
+const insights = document.getElementById('insights');
+const searchInput = document.getElementById('global-search');
+
+/* Charts */
+let categoryChart, monthlyChart, emotionChart;
+const ctxCat = document.getElementById('categoryChart').getContext('2d');
+const ctxMonth = document.getElementById('monthlyChart').getContext('2d');
+const ctxEmo = document.getElementById('emotionChart').getContext('2d');
+
+/* ======= Initial render ======= */
+renderAll();
+
+/* ======= Event Listeners ======= */
+document.getElementById('addBtn').addEventListener('click', addTransaction);
+document.getElementById('saveBudgetBtn').addEventListener('click', saveBudget);
+document.getElementById('addLimitBtn').addEventListener('click', addCategoryLimit);
+document.getElementById('clearStorageBtn').addEventListener('click', resetApp);
+document.getElementById('exportCsv').addEventListener('click', exportCSV);
+document.getElementById('exportPdf').addEventListener('click', exportPDF);
+document.getElementById('signinBtn').addEventListener('click', openAuth);
+document.getElementById('authCancel').addEventListener('click', ()=>document.getElementById('authModal').style.display='none');
+document.getElementById('authSave').addEventListener('click', saveAuth);
+document.getElementById('darkToggle').addEventListener('click', toggleDark);
+document.getElementById('global-search').addEventListener('input', filterList);
+document.getElementById('installBtn').addEventListener('click', promptInstall);
+
+/* PWA registration (simple inline service worker) */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([`
+    // Simple service worker for offline caching
+    const CACHE_NAME = 'greenbudget-cache-v1';
+    const toCache = ['/', location.pathname];
+    self.addEventListener('install', e => {
+      e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(toCache)).catch(()=>{}));
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    });
+  `],{type:'text/javascript'}))).catch(()=>{/*ignore*/});
+  // Create a manifest file blob so PWA install works when saved locally
+  const manifest = {
+    name:'GreenBudget',
+    short_name:'GreenBudget',
+    start_url:'.',
+    display:'standalone',
+    background_color:'#e9f0fb',
+    description:'Offline-ready expense tracker',
+    icons:[ { src:'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect rx=20 width=100 height=100 fill=%22%230f397c%22/><text x=50 y=58 font-size=48 text-anchor=middle fill=%22%23ffffff%22>GB</text></svg>' , sizes:'192x192', type:'image/svg+xml'} ]
+  };
+  const manBlob = new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  document.getElementById('manifest-link').href = URL.createObjectURL(manBlob);
+}
+
+/* ======= Core Functions ======= */
+
+function renderAll(){
+  // ensure currentUser exists
+  if(!store.users[store.signedIn]) { store.signedIn='guest'; saveStore(); }
+  currentUser = store.signedIn;
+  userData = store.users[currentUser].data;
+  // Render budget settings
+  totalBudgetEl.innerText = formatCurrency(store.settings.monthlyBudget);
+  goalAmountText.innerText = '₹' + formatCurrency(store.settings.goalAmount);
+  document.getElementById('total-budget').dataset.value = store.settings.monthlyBudget;
+  // render lists & charts
+  renderLimits();
+  renderItems();
+  updateDashboard();
+  updateCharts();
+  renderBadges();
+}
+
+function addTransaction(){
+  const type = document.getElementById('expType').value || 'Expense';
+  const name = document.getElementById('expName').value.trim();
+  const amount = Number(document.getElementById('amount').value);
+  const date = document.getElementById('date').value || todayISO();
+  const category = document.getElementById('category').value || 'Others';
+  const emotion = document.getElementById('emotion').value || 'Neutral';
+  if(!name || !amount || !date){ alert('Please fill name, amount and date'); return; }
+
+  const txn = { id: Date.now(), type, name, amount, date, category, emotion };
+  // store
+  userData.expenses.push(txn);
+  // xp
+  addXP(10);
+  // check category limit
+  checkCategoryLimit(category);
+  saveStore();
+  renderItems();
+  updateDashboard();
+  updateCharts();
+  updateInsights();
+  // clear form (keep type)
+  document.getElementById('expName').value=''; document.getElementById('amount').value=''; document.getElementById('date').value='';
+  alert('Added ✅');
+}
+
+function renderItems(){
+  // populate filter categories
+  const set = new Set(['All']);
+  userData.expenses.forEach(tx=>set.add(tx.category));
+  filterCat.innerHTML = '<option value="">All</option>';
+  [...set].forEach(c => { if(c!=='All') filterCat.innerHTML += `<option>${c}</option>`; });
+
+  // list items
+  const filter = filterCat.value || '';
+  const q = searchInput.value.trim().toLowerCase();
+  itemsList.innerHTML = '';
+  // show recent first
+  const list = userData.expenses.slice().reverse();
+  if(list.length===0){ itemsList.innerHTML = '<div class="muted">No transactions yet</div>'; return; }
+  list.forEach(tx => {
+    if(filter && tx.category !== filter) return;
+    const txt = `${tx.date} • ${tx.name} • ${tx.category} • ${tx.type} • ₹${formatCurrency(tx.amount)} • ${tx.emotion}`;
+    if(q && !txt.toLowerCase().includes(q)) return;
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `<div>
+        <div style="font-weight:700">${tx.name} <small class="muted">(${tx.type})</small></div>
+        <small class="muted">${tx.date} • ${tx.category} • ${tx.emotion}</small>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:800; color:${tx.type==='Expense'?'#dc2626':'#16a34a'}">₹ ${formatCurrency(tx.amount)}</div>
+        <div style="margin-top:8px"><button class="btn ghost small" onclick="viewTx(${tx.id})">View</button> <button class="btn ghost small" onclick="deleteTx(${tx.id})">Delete</button></div>
+      </div>`;
+    itemsList.appendChild(div);
+  });
+}
+
+function viewTx(id){
+  const tx = userData.expenses.find(t=>t.id===id);
+  if(!tx) return alert('Not found');
+  alert(`Transaction\n\nName: ${tx.name}\nType: ${tx.type}\nAmount: ₹${formatCurrency(tx.amount)}\nDate: ${tx.date}\nCategory: ${tx.category}\nEmotion: ${tx.emotion}`);
+}
+
+function deleteTx(id){
+  if(!confirm('Delete this transaction?')) return;
+  userData.expenses = userData.expenses.filter(t=>t.id!==id);
+  saveStore();
+  renderItems();
+  updateDashboard();
+  updateCharts();
+}
+
+/* ======= Budget & Limits ======= */
+function saveBudget(){
+  const b = Number(document.getElementById('newBudget').value) || store.settings.monthlyBudget;
+  const g = Number(document.getElementById('setGoal').value) || store.settings.goalAmount;
+  store.settings.monthlyBudget = b;
+  store.settings.goalAmount = g;
+  saveStore();
+  document.getElementById('newBudget').value=''; document.getElementById('setGoal').value='';
+  renderAll();
+  alert('Budget saved');
+}
+
+function addCategoryLimit(){
+  const cat = document.getElementById('limitCat').value.trim();
+  const amt = Number(document.getElementById('limitAmt').value);
+  if(!cat || !amt){ alert('Enter category & amount'); return; }
+  store.settings.categoryLimits[cat] = amt;
+  saveStore();
+  document.getElementById('limitCat').value=''; document.getElementById('limitAmt').value='';
+  renderLimits();
+  alert('Category limit added');
+}
+function renderLimits(){
+  limitsList.innerHTML = '';
+  const limits = store.settings.categoryLimits || {};
+  if(Object.keys(limits).length===0){ limitsList.innerHTML='<div class="muted">No limits set</div>'; return; }
+  Object.entries(limits).forEach(([cat,amt])=>{
+    const div = document.createElement('div');
+    div.className='item';
+    div.innerHTML = `<div><strong>${cat}</strong><div class="muted">Limit ₹ ${formatCurrency(amt)}</div></div>
+      <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost small" onclick="removeLimit('${cat}')">Remove</button></div>`;
+    limitsList.appendChild(div);
+  });
+}
+function removeLimit(cat){ delete store.settings.categoryLimits[cat]; saveStore(); renderLimits(); alert('Limit removed'); }
+
+/* ======= Dashboard & XP ======= */
+function updateDashboard(){
+  const total = userData.expenses.reduce((s,t)=> t.type==='Expense' ? s + Number(t.amount) : s - 0 + 0, 0);
+  // But we want totalExpense as sum of expenses only
+  const totalExpense = userData.expenses.reduce((s,t)=> t.type==='Expense' ? s + Number(t.amount) : s, 0);
+  totalExpenseEl.innerText = formatCurrency(totalExpense);
+  totalBudgetEl.innerText = formatCurrency(store.settings.monthlyBudget);
+  remainingEl.innerText = formatCurrency(store.settings.monthlyBudget - totalExpense);
+  const progress = Math.min((totalExpense / store.settings.goalAmount) * 100, 100);
+  goalProgressBar.style.width = progress + '%';
+  goalAmountText.innerText = '₹' + formatCurrency(store.settings.goalAmount);
+
+  // XP & Level UI
+  xpEl.innerText = userData.xp || 0;
+  levelEl.innerText = userData.level || 1;
+  xpProgress.style.width = Math.min(((userData.xp || 0) / ((userData.level || 1)*50)) * 100, 100) + '%';
+
+  // Streak: simplified (if lastDate is yesterday, increment)
+  const last = userData.lastDate;
+  const today = todayISO();
+  if(last === today) { /* nothing */ }
+  else {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    if(last === yesterday) {
+      userData.streak = (userData.streak||0) + 1;
+      awardBadge('Streak Master');
+    } else {
+      userData.streak = 1;
+    }
+    userData.lastDate = today;
+    saveStore();
+  }
+  streakEl.innerText = (userData.streak || 0) + ' days';
+
+  // goal check
+  if(totalExpense >= store.settings.goalAmount) awardBadge('Goal Achiever');
+
+  renderBadges();
+  updateInsights();
+}
+
+/* XP & Badges */
+function addXP(n){
+  userData.xp = (userData.xp||0) + n;
+  while(userData.xp >= (userData.level||1) * 50){
+    userData.xp -= (userData.level||1) * 50;
+    userData.level = (userData.level||1) + 1;
+    awardBadge('Level Up');
+    showConfetti();
+  }
+  saveStore();
+  updateDashboard();
+}
+
+function awardBadge(name){
+  userData.badges = userData.badges || [];
+  if(!userData.badges.includes(name)) {
+    userData.badges.push(name);
+    saveStore();
+    renderBadges();
+    showConfetti();
+  }
+}
+function renderBadges(){
+  badgesEl.innerHTML = ''; smallBadgesEl.innerHTML = '';
+  (userData.badges||[]).forEach(b=>{
+    const s = document.createElement('span'); s.className='badge'; s.textContent=b;
+    badgesEl.appendChild(s);
+    const s2 = s.cloneNode(true); smallBadgesEl.appendChild(s2);
+  });
+}
+
+/* ======= Charts ======= */
+function updateCharts(){
+  // prepare maps
+  const catMap = {}, monthMap = {}, emoMap = {};
+  userData.expenses.forEach(t=>{
+    if(t.type === 'Expense') {
+      catMap[t.category] = (catMap[t.category]||0) + t.amount;
+      const m = t.date.substring(0,7);
+      monthMap[m] = (monthMap[m]||0) + t.amount;
+      emoMap[t.emotion] = (emoMap[t.emotion]||0) + 1;
+    }
+  });
+
+  // Category Pie
+  const catLabels = Object.keys(catMap);
+  const catData = Object.values(catMap);
+  if(categoryChart) categoryChart.destroy();
+  categoryChart = new Chart(ctxCat, {
+    type:'pie',
+    data:{
+      labels: catLabels,
+      datasets:[{data:catData, backgroundColor: generateGradientColors(catLabels.length, ctxCat) }]
+    },
+    options:{plugins:{legend:{position:'bottom'}}}
+  });
+
+  // Monthly bar
+  const monthLabels = Object.keys(monthMap).sort();
+  const monthData = monthLabels.map(l=>monthMap[l]);
+  if(monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(ctxMonth,{ type:'bar', data:{ labels:monthLabels, datasets:[{ label:'Expenses', data:monthData, backgroundColor: generateGradientColors(monthLabels.length, ctxMonth, true) }]}, options:{scales:{y:{beginAtZero:true}}}});
+
+  // Emotion donut
+  const emoLabels = Object.keys(emoMap);
+  const emoData = Object.values(emoMap);
+  if(emotionChart) emotionChart.destroy();
+  emotionChart = new Chart(ctxEmo,{ type:'doughnut', data:{ labels:emoLabels, datasets:[{data:emoData, backgroundColor: generateGradientColors(emoLabels.length, ctxEmo)}]}, options:{plugins:{legend:{position:'bottom'}}}});
+}
+
+/* Helpers for charts (generate palette / gradient) */
+function generateGradientColors(n, ctx, vertical=false){
+  const colors = [];
+  for(let i=0;i<n;i++){
+    const h = Math.round((i/n)*360);
+    const c1 = `hsl(${h},70%,65%)`;
+    const c2 = `hsl(${(h+60)%360},60%,55%)`;
+    // create small gradient canvas
+    const g = ctx.createLinearGradient(0,0, vertical?0:200, vertical?200:0);
+    g.addColorStop(0,c1); g.addColorStop(1,c2);
+    colors.push(g);
+  }
+  return colors;
+}
+
+/* ======= Insights & Alerts ======= */
+function updateInsights(){
+  const totalsByCat = {};
+  userData.expenses.forEach(t => { if(t.type==='Expense') totalsByCat[t.category] = (totalsByCat[t.category]||0)+t.amount; });
+  const top = Object.entries(totalsByCat).sort((a,b)=>b[1]-a[1])[0];
+  insights.innerText = top ? `You spend the most on ${top[0]} — ₹${formatCurrency(top[1])}` : 'Add transactions to get insights.';
+  // monthly alert
+  const totalExpense = Object.values(totalsByCat).reduce((s,v)=>s+v,0);
+  if(totalExpense > store.settings.monthlyBudget) {
+    alert('⚠️ You have exceeded your monthly budget!');
+    awardBadge('Budget Overrun');
+  }
+}
+
+/* Category limit check */
+function checkCategoryLimit(category){
+  const limit = store.settings.categoryLimits[category];
+  if(!limit) return;
+  const spent = userData.expenses.filter(t=>t.category===category && t.type==='Expense').reduce((s,t)=>s+Number(t.amount),0);
+  if(spent > limit) {
+    alert(`⚠️ Category limit exceeded for ${category}. Limit ₹${formatCurrency(limit)}, Spent ₹${formatCurrency(spent)}.`);
+    awardBadge('Limit Broken');
+  }
+}
+
+/* ======= Export ======= */
+function exportCSV(){
+  const lines = ['Date,Type,Name,Amount,Category,Emotion'];
+  userData.expenses.forEach(t=> lines.push([t.date,t.type,`"${t.name}"`,t.amount,t.category,t.emotion].join(',')));
+  const blob = new Blob([lines.join('\n')],{type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `greenbudget_${currentUser}_export.csv`; a.click();
+}
+
+async function exportPDF(){
+  // render the main container as image and put into PDF
+  const el = document.querySelector('.container');
+  const canvas = await html2canvas(el, {scale:1.8, useCORS:true});
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({orientation:'portrait', unit:'px', format:[canvas.width, canvas.height]});
+  pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+  pdf.save(`greenbudget_${currentUser}.pdf`);
+}
+
+/* ======= Auth (simple local) ======= */
+function openAuth(){
+  document.getElementById('authModal').style.display='flex';
+  document.getElementById('authTitle').innerText = 'Login / Signup';
+}
+function saveAuth(){
+  const name = document.getElementById('authName').value.trim();
+  const pin = document.getElementById('authPin').value.trim();
+  if(!name || pin.length < 1){ alert('Enter name and PIN'); return; }
+  // create or switch user
+  if(!store.users[name]) {
+    store.users[name] = { pin, name, data:{expenses:[], xp:0, level:1, streak:0, lastDate:null, badges:[] } };
+    store.signedIn = name;
+    alert('Account created and logged in');
+  } else {
+    // check pin if set (guest may have empty pin)
+    if(store.users[name].pin && store.users[name].pin !== pin) { if(!confirm('PIN mismatch. Switch anyway?')) return; }
+    store.signedIn = name;
+    alert('Logged in as ' + name);
+  }
+  saveStore();
+  document.getElementById('authModal').style.display='none';
+  renderAll();
+}
+
+/* ======= Reset & Utilities ======= */
+function resetApp(){
+  if(!confirm('Reset app data for ALL users? This will clear everything.')) return;
+  localStorage.removeItem(APP_KEY);
+  location.reload();
+}
+
+/* ======= Misc UI helpers ======= */
+function toggleDark(){ document.body.classList.toggle('dark'); }
+function filterList(){ renderItems(); }
+
+/* ======= Confetti mini ======= */
+function showConfetti(){
+  for(let i=0;i<30;i++){
+    const d = document.createElement('div');
+    d.style.position='fixed';
+    d.style.width='10px'; d.style.height='10px';
+    d.style.left = Math.random()*window.innerWidth + 'px';
+    d.style.top = '-20px';
+    d.style.background = `hsl(${Math.random()*360},70%,60%)`;
+    d.style.borderRadius = '3px';
+    d.style.zIndex = 9999;
+    d.style.transition = 'transform 1.6s linear, top 1.6s linear, opacity 0.8s';
+    document.body.appendChild(d);
+    setTimeout(()=>{ d.style.top = window.innerHeight + 'px'; d.style.transform = `rotate(${Math.random()*720}deg) translateY(20px)`; d.style.opacity = 0; }, 50);
+    setTimeout(()=>d.remove(), 1800);
+  }
+}
+
+/* ======= PWA Install prompt handler (simple) ======= */
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').style.display='inline-block';
+});
+function promptInstall(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(choice => {
+      if(choice.outcome === 'accepted') { alert('App installed!'); }
+      deferredPrompt = null;
+    });
+  } else {
+    alert('Install prompt not available. Use browser menu -> Install.');
+  }
+}
+
+</script>
+</body>
+</html>
