@@ -1,0 +1,202 @@
+<!-- Improved UI with more spacing and cleaner layout -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>HomeBudget — Improved UI</title>
+<link rel="manifest" href="manifest.json" id="manifest-link"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+  --bg:#eef4ff;
+  --card:#ffffff;
+  --primary:#0e3574;
+  --accent:#5fa0ff;
+  --muted:#6b7280;
+  --space:20px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+body{
+  background:linear-gradient(180deg,#eef4ff,#d8e6ff);
+  padding:var(--space);
+}
+.container{
+  max-width:1180px;
+  margin:auto;
+  display:flex;
+  flex-direction:column;
+  gap:var(--space);
+}
+
+/* Header */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:var(--space);
+  border-radius:18px;
+  background:var(--card);
+  box-shadow:0 6px 20px rgba(0,0,0,0.06);
+}
+.brand{display:flex;gap:14px;align-items:center;}
+.logo{
+  width:60px;height:60px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:16px;
+  background:linear-gradient(135deg,#0f397c,#5fa0ff);
+  color:white;font-size:22px;font-weight:800;
+  box-shadow:0 6px 14px rgba(0,0,0,0.15);
+}
+
+.top-controls{display:flex;gap:12px;align-items:center;}
+.btn{
+  padding:10px 16px;
+  background:var(--primary);
+  color:white;
+  border:none;
+  border-radius:12px;
+  font-weight:600;
+  cursor:pointer;
+}
+.btn.ghost{
+  background:white;
+  color:var(--primary);
+  border:1px solid rgba(14,53,116,0.3);
+}
+
+.search-box{
+  padding:10px 15px;
+  border-radius:12px;
+  background:white;
+  display:flex;
+  width:260px;
+  border:1px solid #d6e2ff;
+}
+.search-box input{border:none;width:100%;outline:none;background:transparent;}
+
+/* Layout grid */
+.grid{
+  display:grid;
+  grid-template-columns:1fr 360px;
+  gap:var(--space);
+}
+.card{
+  background:var(--card);
+  padding:var(--space);
+  border-radius:16px;
+  box-shadow:0 8px 26px rgba(13,30,60,0.06);
+}
+
+.stat-box{
+  display:flex;
+  gap:var(--space);
+  margin-top:var(--space);
+  flex-wrap:wrap;
+}
+.stat{
+  flex:1;
+  min-width:200px;
+  padding:16px;
+  background:#f8faff;
+  border-radius:16px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.06);
+}
+
+.form-area{margin-top:var(--space);display:flex;flex-direction:column;gap:12px;}
+.form-row{display:flex;gap:12px;flex-wrap:wrap;}
+.form-row input,.form-row select{
+  flex:1;
+  padding:12px;
+  background:#f5f8ff;
+  border-radius:12px;
+  border:1px solid #dbe6ff;
+}
+
+.list{margin-top:var(--space);display:flex;flex-direction:column;gap:12px;}
+.item{
+  background:#f9fbff;
+  border-radius:14px;
+  padding:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 2px 6px rgba(0,0,0,0.04);
+}
+
+/* Right column */
+.right-column{display:flex;flex-direction:column;gap:var(--space);}
+.chart-card{padding:var(--space);border-radius:14px;background:white;}
+
+.footer{text-align:center;color:var(--muted);padding:var(--space);} 
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <div class="brand">
+    <div class="logo">GB</div>
+    <div>
+      <h2 style="margin-bottom:4px;color:var(--primary)">GreenBudget</h2>
+      <div style="color:var(--muted)">Expense & Budget Tracker</div>
+    </div>
+  </div>
+
+  <div class="top-controls">
+    <div class="search-box"><input placeholder="Search"/></div>
+    <button class="btn ghost">PDF</button>
+    <button class="btn ghost">CSV</button>
+    <button class="btn">Login</button>
+  </div>
+</div>
+
+<div class="grid">
+  <div>
+    <div class="card">
+      <h3>Total Budget</h3>
+      <div class="stat-box">
+        <div class="stat">Budget</div>
+        <div class="stat">Expense</div>
+        <div class="stat">Level</div>
+      </div>
+
+      <div class="form-area">
+        <div class="form-row">
+          <input placeholder="Type" />
+          <input placeholder="Name" />
+          <input placeholder="Amount" />
+        </div>
+        <div class="form-row">
+          <input type="date" />
+          <select><option>Category</option></select>
+          <select><option>Emotion</option></select>
+        </div>
+        <button class="btn">Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Transactions</h3>
+      <div class="list">
+        <div class="item"><div>Sample</div><div>₹200</div></div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="right-column">
+    <div class="chart-card">Chart 1</div>
+    <div class="chart-card">Chart 2</div>
+    <div class="chart-card">Chart 3</div>
+  </aside>
+</div>
+
+<div class="footer">Made with person — Improved HomeBudget UI</div>
+
+</div>
+</body>
+</html>
